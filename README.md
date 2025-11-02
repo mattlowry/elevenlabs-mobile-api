@@ -31,7 +31,7 @@ mcp-name: io.github.elevenlabs/elevenlabs-mcp
       "command": "uvx",
       "args": ["elevenlabs-mcp"],
       "env": {
-        "ELEVENLABS_API_KEY": "<insert-your-api-key-here>"
+        "ELEVENLABS_API_KEY": "sk_ece916657aa72d5b07ef1609c068cea8aec243065fa73fae"
       }
     }
   }
@@ -40,6 +40,29 @@ mcp-name: io.github.elevenlabs/elevenlabs-mcp
 ```
 
 If you're using Windows, you will have to enable "Developer Mode" in Claude Desktop to use the MCP server. Click "Help" in the hamburger menu at the top left and select "Enable Developer Mode".
+
+## Quick Environment Setup
+
+For local development and testing, you can use the provided environment files:
+
+1. **Using .env file (recommended for local use)**:
+   ```bash
+   # The API key is already configured in .env
+   # Just source the environment variables:
+   source .env
+   
+   # Or run the quick setup script:
+   python scripts/quick_setup.py
+   ```
+
+2. **Development testing**:
+   ```bash
+   # Run the conversational agent demo:
+   python examples/conversational_agent_demo.py
+   
+   # Start the MCP server directly:
+   python -m elevenlabs_mcp.server
+   ```
 
 ## Other MCP clients
 

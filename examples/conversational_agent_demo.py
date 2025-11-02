@@ -6,7 +6,7 @@ This script demonstrates the key conversational agent features of the ElevenLabs
 Run this to see examples of how to create and manage conversational AI agents.
 
 Prerequisites:
-1. Set your ELEVENLABS_API_KEY environment variable
+1. Set your ELEVENLABS_API_KEY environment variable (sk_ece916657aa72d5b07ef1609c068cea8aec243065fa73fae)
 2. Install the required dependencies: pip install elevenlabs python-dotenv
 """
 

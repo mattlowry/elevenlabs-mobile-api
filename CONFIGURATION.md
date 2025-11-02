@@ -4,7 +4,7 @@
 
 ### Required
 ```bash
-export ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"
+export ELEVENLABS_API_KEY="sk_ece916657aa72d5b07ef1609c068cea8aec243065fa73fae"
 ```
 
 ### Optional Configuration
@@ -34,7 +34,7 @@ Add to your `claude_desktop_config.json`:
       "command": "uvx",
       "args": ["elevenlabs-mcp"],
       "env": {
-        "ELEVENLABS_API_KEY": "your_api_key_here",
+        "ELEVENLABS_API_KEY": "sk_ece916657aa72d5b07ef1609c068cea8aec243065fa73fae",
         "ELEVENLABS_MCP_BASE_PATH": "~/Desktop",
         "ELEVENLABS_MCP_OUTPUT_MODE": "files"
       }
@@ -51,7 +51,7 @@ Add to your `claude_desktop_config.json`:
       "command": "python",
       "args": ["-m", "elevenlabs_mcp.server"],
       "env": {
-        "ELEVENLABS_API_KEY": "your_api_key_here",
+        "ELEVENLABS_API_KEY": "sk_ece916657aa72d5b07ef1609c068cea8aec243065fa73fae",
         "ELEVENLABS_MCP_BASE_PATH": "~/Desktop"
       }
     }
