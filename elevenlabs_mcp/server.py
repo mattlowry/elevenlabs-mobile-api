@@ -1237,3 +1237,835 @@ def main():
 
 if __name__ == "__main__":
     main()
+@mcp.tool(
+    description="""Create a conversational AI agent from a template with pre-configured settings.
+
+    ⚠️ COST WARNING: This tool makes an API call to ElevenLabs which may incur costs. Only use when explicitly requested by the user.
+
+    Args:
+        name: Name of the agent
+        template_type: Type of agent template to use
+        custom_instructions: Custom instructions to override template defaults
+        voice_id: ID of the voice to use for the agent (optional, will use template default)
+        language: ISO 639-1 language code for the agent
+        knowledge_base_source: Optional knowledge base source (URL, file path, or text)
+"""
+)
+def create_agent_from_template(
+    name: str,
+    template_type: Literal["customer_service", "sales_assistant", "technical_support", "personal_assistant", "creative_writer", "educator", "therapist", "interviewer", "trainer"],
+    custom_instructions: str | None = None,
+    voice_id: str | None = None,
+    language: str = "en",
+    knowledge_base_source: str | None = None,
+) -> TextContent:
+    """Create a conversational AI agent from a predefined template."""
+    
+    # Template configurations
+    templates = {
+        "customer_service": {
+            "system_prompt": """You are a helpful customer service representative. Always be polite, patient, and solution-focused. Listen carefully to customer concerns and provide clear, actionable assistance. Ask clarifying questions when needed and escalate complex issues to human agents when appropriate.""",
+            "first_message": "Hello! I'm here to help you with any questions or concerns you might have. How can I assist you today?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.4,
+            "similarity_boost": 0.8
+        },
+        "sales_assistant": {
+            "system_prompt": """You are a knowledgeable sales assistant. Focus on understanding customer needs, providing valuable information about products or services, and guiding customers through their purchasing decisions. Be consultative rather than pushy, and always prioritize customer value.""",
+            "first_message": "Hi there! I'd love to help you find exactly what you're looking for. What brings you here today?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.5,
+            "similarity_boost": 0.8
+        },
+        "technical_support": {
+            "system_prompt": """You are a technical support specialist. Diagnose technical issues systematically, provide step-by-step troubleshooting instructions, and explain technical concepts in clear, understandable terms. Always ask relevant questions to narrow down the problem.""",
+            "first_message": "I'm here to help resolve any technical issues you're experiencing. Can you describe the problem you're encountering?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.3,
+            "similarity_boost": 0.7
+        },
+        "personal_assistant": {
+            "system_prompt": """You are a helpful personal assistant. Assist with scheduling, information lookup, task management, and general productivity. Be organized, proactive, and anticipate needs. Provide helpful suggestions and reminders.""",
+            "first_message": "Hello! I'm your personal assistant. How can I help you stay organized and productive today?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.6,
+            "similarity_boost": 0.8
+        },
+        "creative_writer": {
+            "system_prompt": """You are a creative writing assistant. Help brainstorm ideas, develop characters and plots, provide writing feedback, and inspire creativity. Be imaginative, supportive, and constructive in your suggestions.""",
+            "first_message": "Hello! I'm here to help with your creative writing projects. What story, character, or idea would you like to develop?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.8,
+            "similarity_boost": 0.9
+        },
+        "educator": {
+            "system_prompt": """You are a knowledgeable educator. Explain concepts clearly, adapt your teaching style to the learner's level, encourage questions, and provide examples and analogies to enhance understanding. Be patient and encouraging.""",
+            "first_message": "Hello! I'm here to help you learn. What subject would you like to explore or what concepts would you like me to explain?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.5,
+            "similarity_boost": 0.8
+        },
+        "therapist": {
+            "system_prompt": """You are a supportive therapeutic conversation partner. Provide emotional support, help process feelings, offer perspective, and encourage self-reflection. Be empathetic, non-judgmental, and focus on the person's wellbeing. Remember you are not a replacement for professional therapy.""",
+            "first_message": "Hello. I'm here to listen and support you. How are you feeling today?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.7,
+            "similarity_boost": 0.9
+        },
+        "interviewer": {
+            "system_prompt": """You are a skilled interviewer. Ask thoughtful, open-ended questions, actively listen to responses, and follow up appropriately. Create a comfortable environment for meaningful conversation and extract valuable insights.""",
+            "first_message": "Hello! I'm excited to learn more about you and your experiences. Let's start with some questions - are you ready?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.4,
+            "similarity_boost": 0.7
+        },
+        "trainer": {
+            "system_prompt": """You are a fitness and wellness trainer. Provide motivation, create workout plans, offer nutritional advice, track progress, and encourage healthy lifestyle choices. Be supportive, knowledgeable, and adapt programs to individual needs and limitations.""",
+            "first_message": "Hello! I'm here to help you achieve your fitness and wellness goals. What would you like to work on today?",
+            "llm": "gemini-2.0-flash-001",
+            "stability": 0.6,
+            "similarity_boost": 0.8
+        }
+    }
+    
+    if template_type not in templates:
+        make_error(f"Template type '{template_type}' is not supported.")
+    
+    template = templates[template_type]
+    
+    # Use custom instructions if provided, otherwise use template
+    system_prompt = custom_instructions or template["system_prompt"]
+    first_message = template["first_message"]
+    llm = template["llm"]
+    stability = template["stability"]
+    similarity_boost = template["similarity_boost"]
+    
+    # Create the agent
+    conversation_config = create_conversation_config(
+        language=language,
+        system_prompt=system_prompt,
+        llm=llm,
+        first_message=first_message,
+        temperature=0.7,
+        max_tokens=None,
+        asr_quality="high",
+        voice_id=voice_id,
+        model_id="eleven_turbo_v2",
+        optimize_streaming_latency=3,
+        stability=stability,
+        similarity_boost=similarity_boost,
+        turn_timeout=7,
+        max_duration_seconds=300,
+    )
+
+    platform_settings = create_platform_settings(
+        record_voice=True,
+        retention_days=730,
+    )
+
+    response = client.conversational_ai.agents.create(
+        name=name,
+        conversation_config=conversation_config,
+        platform_settings=platform_settings,
+    )
+    
+    result_message = f"""Agent created successfully from '{template_type}' template: 
+Name: {name}
+Agent ID: {response.agent_id}
+Template Type: {template_type}
+System Prompt: {system_prompt}
+Voice ID: {voice_id or "Default"}
+Language: {language}
+LLM: {llm}
+
+You can use this agent ID for future interactions with the agent."""
+
+    # Add knowledge base if source provided
+    if knowledge_base_source:
+        try:
+            if knowledge_base_source.startswith(('http://', 'https://')):
+                # URL
+                add_knowledge_base_to_agent(
+                    agent_id=response.agent_id,
+                    knowledge_base_name=f"{template_type.title()} Knowledge Base",
+                    url=knowledge_base_source
+                )
+                result_message += f"\n\nKnowledge base added from URL: {knowledge_base_source}"
+            elif os.path.isfile(knowledge_base_source):
+                # File
+                add_knowledge_base_to_agent(
+                    agent_id=response.agent_id,
+                    knowledge_base_name=f"{template_type.title()} Knowledge Base",
+                    file_path=knowledge_base_source
+                )
+                result_message += f"\n\nKnowledge base added from file: {knowledge_base_source}"
+            else:
+                # Text
+                add_knowledge_base_to_agent(
+                    agent_id=response.agent_id,
+                    knowledge_base_name=f"{template_type.title()} Knowledge Base",
+                    text=knowledge_base_source
+                )
+                result_message += f"\n\nKnowledge base added from provided text."
+        except Exception as e:
+            result_message += f"\n\nWarning: Failed to add knowledge base: {str(e)}"
+
+    return TextContent(type="text", text=result_message)@mcp.tool(
+    description="""Analyze conversational AI agent performance and provide insights.
+
+    This tool analyzes conversation data to provide metrics like:
+    - Average conversation duration
+    - Response satisfaction patterns  
+    - Common conversation topics
+    - Agent performance indicators
+    - Recommendations for improvement
+
+    Args:
+        agent_id: The ID of the agent to analyze
+        days_back: Number of days to analyze (default: 30)
+        min_conversations: Minimum number of conversations needed for analysis (default: 5)
+"""
+)
+def analyze_agent_performance(
+    agent_id: str,
+    days_back: int = 30,
+    min_conversations: int = 5,
+) -> TextContent:
+    """Analyze agent performance based on conversation history."""
+    
+    # Calculate date range
+    from datetime import datetime, timedelta
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days_back)
+    
+    start_unix = int(start_date.timestamp())
+    end_unix = int(end_date.timestamp())
+    
+    try:
+        # Get conversations for the agent
+        response = client.conversational_ai.conversations.list(
+            agent_id=agent_id,
+            call_start_after_unix=start_unix,
+            call_start_before_unix=end_unix,
+            page_size=100,
+        )
+        
+        if not response.conversations:
+            return TextContent(
+                type="text", 
+                text=f"No conversations found for agent {agent_id} in the last {days_back} days."
+            )
+        
+        conversations = response.conversations
+        
+        if len(conversations) < min_conversations:
+            return TextContent(
+                type="text", 
+                text=f"Only {len(conversations)} conversations found (minimum {min_conversations} required for analysis)."
+            )
+        
+        # Analyze conversations
+        total_conversations = len(conversations)
+        successful_calls = sum(1 for conv in conversations if conv.call_successful)
+        avg_duration = sum(conv.call_duration_secs for conv in conversations) / total_conversations
+        avg_messages = sum(conv.message_count for conv in conversations) / total_conversations
+        
+        # Calculate success rate
+        success_rate = (successful_calls / total_conversations) * 100
+        
+        # Analyze conversation status distribution
+        status_counts = {}
+        for conv in conversations:
+            status = conv.status
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        # Performance indicators
+        performance_score = min(100, (success_rate * 0.6) + (min(100, avg_duration/300 * 100) * 0.2) + (min(100, avg_messages/20 * 100) * 0.2))
+        
+        analysis_text = f"""Agent Performance Analysis (Last {days_back} days):
+
+📊 CONVERSATION METRICS
+• Total Conversations: {total_conversations}
+• Successful Calls: {successful_calls} ({success_rate:.1f}%)
+• Average Duration: {avg_duration:.1f} seconds ({avg_duration/60:.1f} minutes)
+• Average Messages per Conversation: {avg_messages:.1f}
+
+📈 STATUS BREAKDOWN
+"""
+        
+        for status, count in status_counts.items():
+            percentage = (count / total_conversations) * 100
+            analysis_text += f"• {status.title()}: {count} ({percentage:.1f}%)\n"
+        
+        analysis_text += f"""
+🎯 PERFORMANCE SCORE: {performance_score:.1f}/100
+
+💡 INSIGHTS & RECOMMENDATIONS
+"""
+        
+        # Generate recommendations based on metrics
+        recommendations = []
+        
+        if success_rate < 70:
+            recommendations.append("• Consider improving agent configuration or voice quality to reduce call failures")
+        elif success_rate > 90:
+            recommendations.append("• Excellent success rate - your agent configuration is working well")
+            
+        if avg_duration < 60:
+            recommendations.append("• Conversations are quite short - consider if agents are being cut off too early")
+        elif avg_duration > 900:  # 15 minutes
+            recommendations.append("• Long conversation durations - consider if this indicates good engagement or inefficient routing")
+            
+        if avg_messages < 5:
+            recommendations.append("• Low message count suggests quick resolutions or potential engagement issues")
+        elif avg_messages > 50:
+            recommendations.append("• High message count suggests good engagement and thorough conversations")
+        
+        if not recommendations:
+            recommendations.append("• Performance metrics look healthy - continue monitoring")
+        
+        for rec in recommendations:
+            analysis_text += f"{rec}\n"
+        
+        analysis_text += f"""
+📋 DETAILED STATISTICS
+• Analysis Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}
+• Conversations Analyzed: {total_conversations}
+• Minimum Threshold: {min_conversations} conversations
+• Performance Score: {performance_score:.1f}/100
+"""
+        
+        return TextContent(type="text", text=analysis_text)
+        
+    except Exception as e:
+        make_error(f"Failed to analyze agent performance: {str(e)}")
+        return TextContent(type="text", text="")@mcp.tool(
+    description="""Update an existing conversational AI agent with new configuration.
+
+    ⚠️ COST WARNING: This tool makes an API call to ElevenLabs which may incur costs. Only use when explicitly requested by the user.
+
+    Args:
+        agent_id: The ID of the agent to update
+        new_name: New name for the agent (optional)
+        new_system_prompt: New system prompt (optional)
+        new_voice_id: New voice ID to use (optional)
+        new_language: New language code (optional)
+        new_temperature: New temperature setting (0-1, optional)
+        new_stability: New stability setting (0-1, optional)
+        new_similarity_boost: New similarity boost setting (0-1, optional)
+        update_first_message: Whether to update the first message (requires first_message parameter)
+        first_message: New first message (optional)
+"""
+)
+def update_agent(
+    agent_id: str,
+    new_name: str | None = None,
+    new_system_prompt: str | None = None,
+    new_voice_id: str | None = None,
+    new_language: str | None = None,
+    new_temperature: float | None = None,
+    new_stability: float | None = None,
+    new_similarity_boost: float | None = None,
+    update_first_message: bool = False,
+    first_message: str | None = None,
+) -> TextContent:
+    """Update an existing conversational AI agent."""
+    
+    try:
+        # Get current agent configuration
+        current_agent = client.conversational_ai.agents.get(agent_id=agent_id)
+        
+        # Build new configuration
+        current_config = current_agent.conversation_config
+        
+        # Update system prompt if provided
+        if new_system_prompt:
+            if "prompt" not in current_config["agent"]:
+                current_config["agent"]["prompt"] = {}
+            current_config["agent"]["prompt"]["prompt"] = new_system_prompt
+        
+        # Update temperature if provided
+        if new_temperature is not None:
+            if "prompt" not in current_config["agent"]:
+                current_config["agent"]["prompt"] = {}
+            current_config["agent"]["prompt"]["temperature"] = new_temperature
+        
+        # Update language if provided
+        if new_language:
+            current_config["agent"]["language"] = new_language
+        
+        # Update TTS settings if voice or stability/similarity settings provided
+        if new_voice_id or new_stability is not None or new_similarity_boost is not None:
+            if "tts" not in current_config:
+                current_config["tts"] = {}
+            
+            if new_voice_id:
+                current_config["tts"]["voice_id"] = new_voice_id
+            if new_stability is not None:
+                current_config["tts"]["stability"] = new_stability
+            if new_similarity_boost is not None:
+                current_config["tts"]["similarity_boost"] = new_similarity_boost
+        
+        # Update first message if requested and provided
+        if update_first_message and first_message:
+            current_config["agent"]["first_message"] = first_message
+        
+        # Update the agent
+        response = client.conversational_ai.agents.update(
+            agent_id=agent_id,
+            conversation_config=current_config,
+        )
+        
+        # Update name if provided
+        if new_name:
+            agent_info = response.model_dump()
+            agent_info["name"] = new_name
+            response = client.conversational_ai.agents.update(
+                agent_id=agent_id,
+                name=new_name,
+                conversation_config=current_config,
+            )
+        
+        update_summary = f"Agent updated successfully:\n"
+        update_summary += f"Agent ID: {agent_id}\n"
+        
+        if new_name:
+            update_summary += f"New Name: {new_name}\n"
+        if new_system_prompt:
+            update_summary += "System Prompt: Updated\n"
+        if new_voice_id:
+            update_summary += f"Voice ID: {new_voice_id}\n"
+        if new_language:
+            update_summary += f"Language: {new_language}\n"
+        if new_temperature is not None:
+            update_summary += f"Temperature: {new_temperature}\n"
+        if new_stability is not None:
+            update_summary += f"Stability: {new_stability}\n"
+        if new_similarity_boost is not None:
+            update_summary += f"Similarity Boost: {new_similarity_boost}\n"
+        if update_first_message and first_message:
+            update_summary += "First Message: Updated\n"
+        
+        update_summary += "\nNote: Some changes may take a few minutes to take effect."
+        
+        return TextContent(type="text", text=update_summary)
+        
+    except Exception as e:
+        make_error(f"Failed to update agent: {str(e)}")
+        return TextContent(type="text", text="")@mcp.tool(
+    description="""Generate a comprehensive conversation analytics report for one or more agents.
+
+    ⚠️ COST WARNING: This tool makes multiple API calls to ElevenLabs which may incur costs. Only use when explicitly requested by the user.
+
+    Args:
+        agent_ids: Comma-separated list of agent IDs to analyze (or 'all' for all agents)
+        days_back: Number of days to analyze (default: 30)
+        output_directory: Directory where the report should be saved (optional)
+        report_format: Format for the report ('json', 'csv', 'summary') - default: 'summary'
+"""
+)
+def generate_conversation_analytics_report(
+    agent_ids: str,
+    days_back: int = 30,
+    output_directory: str | None = None,
+    report_format: Literal["json", "csv", "summary"] = "summary",
+) -> Union[TextContent, EmbeddedResource]:
+    """Generate comprehensive conversation analytics report."""
+    
+    from datetime import datetime, timedelta
+    import json
+    import csv
+    from io import StringIO
+    
+    # Calculate date range
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days_back)
+    start_unix = int(start_date.timestamp())
+    end_unix = int(end_date.timestamp())
+    
+    try:
+        # Get all agents if 'all' specified
+        if agent_ids.lower() == 'all':
+            all_agents = client.conversational_ai.agents.list()
+            agent_list = [agent.agent_id for agent in all_agents.agents]
+        else:
+            agent_list = [aid.strip() for aid in agent_ids.split(',')]
+        
+        # Initialize report data
+        report_data = {
+            "report_metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "analysis_period": {
+                    "start": start_date.isoformat(),
+                    "end": end_date.isoformat(),
+                    "days": days_back
+                },
+                "agents_analyzed": agent_list,
+                "total_agents": len(agent_list)
+            },
+            "summary": {},
+            "agent_details": {},
+            "conversation_metrics": {}
+        }
+        
+        total_conversations = 0
+        total_successful = 0
+        total_duration = 0
+        total_messages = 0
+        
+        # Analyze each agent
+        for agent_id in agent_list:
+            try:
+                # Get agent info
+                agent_info = client.conversational_ai.agents.get(agent_id=agent_id)
+                
+                # Get conversations
+                conversations = client.conversational_ai.conversations.list(
+                    agent_id=agent_id,
+                    call_start_after_unix=start_unix,
+                    call_start_before_unix=end_unix,
+                    page_size=100,
+                )
+                
+                conv_list = conversations.conversations
+                if not conv_list:
+                    continue
+                
+                # Calculate metrics for this agent
+                agent_conversations = len(conv_list)
+                agent_successful = sum(1 for conv in conv_list if conv.call_successful)
+                agent_avg_duration = sum(conv.call_duration_secs for conv in conv_list) / agent_conversations
+                agent_avg_messages = sum(conv.message_count for conv in conv_list) / agent_conversations
+                agent_success_rate = (agent_successful / agent_conversations) * 100 if agent_conversations > 0 else 0
+                
+                # Status distribution
+                status_dist = {}
+                for conv in conv_list:
+                    status = conv.status
+                    status_dist[status] = status_dist.get(status, 0) + 1
+                
+                # Store agent details
+                report_data["agent_details"][agent_id] = {
+                    "agent_name": agent_info.name,
+                    "conversations": {
+                        "total": agent_conversations,
+                        "successful": agent_successful,
+                        "success_rate": agent_success_rate,
+                        "avg_duration_seconds": agent_avg_duration,
+                        "avg_duration_minutes": agent_avg_duration / 60,
+                        "avg_messages": agent_avg_messages,
+                        "status_distribution": status_dist
+                    }
+                }
+                
+                # Add to totals
+                total_conversations += agent_conversations
+                total_successful += agent_successful
+                total_duration += sum(conv.call_duration_secs for conv in conv_list)
+                total_messages += sum(conv.message_count for conv in conv_list)
+                
+            except Exception as e:
+                report_data["agent_details"][agent_id] = {"error": str(e)}
+        
+        # Calculate overall summary
+        overall_success_rate = (total_successful / total_conversations * 100) if total_conversations > 0 else 0
+        overall_avg_duration = (total_duration / total_conversations) if total_conversations > 0 else 0
+        overall_avg_messages = (total_messages / total_conversations) if total_conversations > 0 else 0
+        
+        report_data["summary"] = {
+            "total_conversations": total_conversations,
+            "total_successful_calls": total_successful,
+            "overall_success_rate": overall_success_rate,
+            "overall_avg_duration_seconds": overall_avg_duration,
+            "overall_avg_duration_minutes": overall_avg_duration / 60,
+            "overall_avg_messages": overall_avg_messages,
+            "agents_with_data": len([aid for aid in agent_list if aid in report_data["agent_details"]])
+        }
+        
+        # Format report based on requested format
+        if report_format == "json":
+            report_text = json.dumps(report_data, indent=2, default=str)
+            file_extension = "json"
+            
+        elif report_format == "csv":
+            # Create CSV output
+            output = StringIO()
+            writer = csv.writer(output)
+            
+            # Write header
+            writer.writerow([
+                "Agent ID", "Agent Name", "Total Conversations", "Successful Calls", 
+                "Success Rate (%)", "Avg Duration (min)", "Avg Messages"
+            ])
+            
+            # Write agent data
+            for agent_id, details in report_data["agent_details"].items():
+                if "error" not in details:
+                    conv_data = details["conversations"]
+                    writer.writerow([
+                        agent_id,
+                        details["agent_name"],
+                        conv_data["total"],
+                        conv_data["successful"],
+                        f"{conv_data['success_rate']:.1f}",
+                        f"{conv_data['avg_duration_minutes']:.1f}",
+                        f"{conv_data['avg_messages']:.1f}"
+                    ])
+            
+            report_text = output.getvalue()
+            file_extension = "csv"
+            
+        else:  # summary format
+            report_lines = [
+                f"📊 CONVERSATION ANALYTICS REPORT",
+                f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} ({days_back} days)",
+                "",
+                f"🎯 OVERALL SUMMARY",
+                f"• Total Conversations: {total_conversations:,}",
+                f"• Successful Calls: {total_successful:,} ({overall_success_rate:.1f}%)",
+                f"• Average Duration: {overall_avg_duration:.1f}s ({overall_avg_duration/60:.1f} min)",
+                f"• Average Messages: {overall_avg_messages:.1f}",
+                f"• Agents Analyzed: {report_data['summary']['agents_with_data']}",
+                "",
+                "📋 AGENT BREAKDOWN"
+            ]
+            
+            for agent_id, details in report_data["agent_details"].items():
+                if "error" not in details:
+                    conv_data = details["conversations"]
+                    report_lines.extend([
+                        f"• {details['agent_name']} ({agent_id})",
+                        f"  - Conversations: {conv_data['total']} (Success: {conv_data['successful']}, {conv_data['success_rate']:.1f}%)",
+                        f"  - Avg Duration: {conv_data['avg_duration_minutes']:.1f} min, Messages: {conv_data['avg_messages']:.1f}",
+                        ""
+                    ])
+                else:
+                    report_lines.extend([
+                        f"• {agent_id}: Error - {details['error']}",
+                        ""
+                    ])
+            
+            report_text = "\n".join(report_lines)
+            file_extension = "txt"
+        
+        # Save and return based on output mode
+        output_path = make_output_path(output_directory, base_path)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"conversation_analytics_{timestamp}.{file_extension}"
+        
+        report_bytes = report_text.encode('utf-8')
+        
+        return handle_output_mode(
+            report_bytes, 
+            output_path, 
+            filename, 
+            output_mode,
+            f"Conversation analytics report generated: {total_conversations} conversations analyzed"
+        )
+        
+    except Exception as e:
+        make_error(f"Failed to generate conversation analytics report: {str(e)}")
+        return TextContent(type="text", text="")@mcp.tool(
+    description="""Manage the lifecycle of conversational AI agents (create, update, delete, duplicate).
+
+    Args:
+        action: Action to perform ('create', 'update', 'delete', 'duplicate', 'list')
+        agent_id: Agent ID for update/delete/duplicate actions (required for these actions)
+        new_name: New name for the agent (for create/update actions)
+        new_description: Description for the agent (optional)
+        copy_settings_from: Agent ID to copy settings from (for create action)
+"""
+)
+def manage_agent_lifecycle(
+    action: Literal["create", "update", "delete", "duplicate", "list"],
+    agent_id: str | None = None,
+    new_name: str | None = None,
+    new_description: str | None = None,
+    copy_settings_from: str | None = None,
+) -> TextContent:
+    """Manage the lifecycle of conversational AI agents."""
+    
+    try:
+        if action == "list":
+            # List all agents
+            response = client.conversational_ai.agents.list()
+            
+            if not response.agents:
+                return TextContent(type="text", text="No agents found in your account.")
+            
+            agent_info = []
+            agent_info.append("🤖 CONVERSATIONAL AI AGENTS")
+            agent_info.append(f"Total: {len(response.agents)} agents")
+            agent_info.append("")
+            
+            for agent in response.agents:
+                # Get agent details for additional info
+                try:
+                    details = client.conversational_ai.agents.get(agent.agent_id)
+                    created_date = datetime.fromtimestamp(details.metadata.created_at_unix_secs).strftime('%Y-%m-%d')
+                    
+                    agent_info.append(f"• {agent.name}")
+                    agent_info.append(f"  ID: {agent.agent_id}")
+                    agent_info.append(f"  Created: {created_date}")
+                    
+                    # Try to get recent conversation count
+                    try:
+                        recent_convs = client.conversational_ai.conversations.list(
+                            agent_id=agent.agent_id,
+                            page_size=1
+                        )
+                        if recent_convs.conversations:
+                            agent_info.append(f"  Recent Activity: Yes")
+                        else:
+                            agent_info.append(f"  Recent Activity: No conversations yet")
+                    except:
+                        agent_info.append(f"  Recent Activity: Unknown")
+                    
+                    agent_info.append("")
+                    
+                except Exception as e:
+                    agent_info.append(f"• {agent.name} (ID: {agent.agent_id}) - Error loading details: {str(e)}")
+                    agent_info.append("")
+            
+            return TextContent(type="text", text="\n".join(agent_info))
+        
+        elif action == "delete":
+            if not agent_id:
+                make_error("Agent ID is required for delete action.")
+            
+            # Confirm deletion
+            agent_info = client.conversational_ai.agents.get(agent_id)
+            agent_name = agent_info.name
+            
+            try:
+                client.conversational_ai.agents.delete(agent_id)
+                return TextContent(
+                    type="text", 
+                    text=f"✅ Agent '{agent_name}' (ID: {agent_id}) has been deleted successfully."
+                )
+            except Exception as e:
+                make_error(f"Failed to delete agent: {str(e)}")
+        
+        elif action == "duplicate":
+            if not agent_id:
+                make_error("Agent ID is required for duplicate action.")
+            if not new_name:
+                make_error("New name is required for duplicate action.")
+            
+            # Get original agent
+            original_agent = client.conversational_ai.agents.get(agent_id)
+            original_config = original_agent.conversation_config
+            
+            # Create new agent with copied settings
+            new_agent = client.conversational_ai.agents.create(
+                name=new_name,
+                conversation_config=original_config,
+                platform_settings=create_platform_settings(record_voice=True, retention_days=730),
+            )
+            
+            return TextContent(
+                type="text",
+                text=f"✅ Agent duplicated successfully!\n"
+                     f"Original: {original_agent.name} (ID: {agent_id})\n"
+                     f"Duplicate: {new_agent.name} (ID: {new_agent.agent_id})\n"
+                     f"All settings and configurations have been copied."
+            )
+        
+        elif action == "create":
+            if not new_name:
+                make_error("Name is required for create action.")
+            
+            # Copy settings from another agent if specified
+            if copy_settings_from:
+                try:
+                    source_agent = client.conversational_ai.agents.get(copy_settings_from)
+                    source_config = source_agent.conversation_config
+                    
+                    # Update agent name in config if needed
+                    if "agent" in source_config and "first_message" in source_config["agent"]:
+                        # Update first message to include new name
+                        source_config["agent"]["first_message"] = f"Hello! I'm {new_name}, your AI assistant. How can I help you today?"
+                    
+                    new_agent = client.conversational_ai.agents.create(
+                        name=new_name,
+                        conversation_config=source_config,
+                        platform_settings=create_platform_settings(record_voice=True, retention_days=730),
+                    )
+                    
+                    return TextContent(
+                        type="text",
+                        text=f"✅ Agent created successfully by copying settings!\n"
+                             f"Source: {source_agent.name} (ID: {copy_settings_from})\n"
+                             f"New Agent: {new_agent.name} (ID: {new_agent.agent_id})\n"
+                             f"All configurations have been copied and adapted."
+                    )
+                    
+                except Exception as e:
+                    make_error(f"Failed to copy settings from agent {copy_settings_from}: {str(e)}")
+            
+            else:
+                # Create basic agent
+                basic_config = create_conversation_config(
+                    language="en",
+                    system_prompt="You are a helpful AI assistant. Be friendly, professional, and solution-focused.",
+                    llm="gemini-2.0-flash-001",
+                    first_message="Hello! I'm your AI assistant. How can I help you today?",
+                    temperature=0.7,
+                    max_tokens=None,
+                    asr_quality="high",
+                    voice_id=DEFAULT_VOICE_ID,
+                    model_id="eleven_turbo_v2",
+                    optimize_streaming_latency=3,
+                    stability=0.5,
+                    similarity_boost=0.8,
+                    turn_timeout=7,
+                    max_duration_seconds=300,
+                )
+                
+                new_agent = client.conversational_ai.agents.create(
+                    name=new_name,
+                    conversation_config=basic_config,
+                    platform_settings=create_platform_settings(record_voice=True, retention_days=730),
+                )
+                
+                return TextContent(
+                    type="text",
+                    text=f"✅ Agent created successfully!\n"
+                         f"Name: {new_agent.name}\n"
+                         f"Agent ID: {new_agent.agent_id}\n"
+                         f"Configuration: Basic conversational AI agent ready for customization."
+                )
+        
+        elif action == "update":
+            if not agent_id:
+                make_error("Agent ID is required for update action.")
+            
+            # This is a simplified update - in practice you'd want more granular controls
+            agent_info = client.conversational_ai.agents.get(agent_id)
+            
+            if new_name:
+                # Update name
+                current_config = agent_info.conversation_config
+                updated_agent = client.conversational_ai.agents.update(
+                    agent_id=agent_id,
+                    name=new_name,
+                    conversation_config=current_config,
+                )
+                
+                return TextContent(
+                    type="text",
+                    text=f"✅ Agent updated successfully!\n"
+                         f"Old Name: {agent_info.name}\n"
+                         f"New Name: {new_name}\n"
+                         f"Agent ID: {agent_id}"
+                )
+            else:
+                make_error("At least one update parameter (name, description, etc.) is required.")
+        
+        else:
+            make_error(f"Unsupported action: {action}")
+            
+    except Exception as e:
+        make_error(f"Failed to manage agent lifecycle: {str(e)}")
+        return TextContent(type="text", text="")
