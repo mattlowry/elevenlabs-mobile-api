@@ -12,5 +12,8 @@ COPY . .
 RUN pip install --upgrade pip \
     && pip install --no-cache-dir .
 
-# Command to run the MCP server
-CMD ["elevenlabs-mcp"]
+# Expose port for API service
+EXPOSE 8080
+
+# Command to run the REST API server for mobile apps
+CMD ["python", "api_server.py"]

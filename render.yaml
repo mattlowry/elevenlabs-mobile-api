@@ -1,0 +1,19 @@
+# Render Deployment Configuration for ElevenLabs Mobile API
+# REST API server for mobile and web applications
+
+services:
+  - type: web
+    name: elevenlabs-mobile-api
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: PORT
+        value: "8080"

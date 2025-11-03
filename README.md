@@ -11,8 +11,19 @@
 
 
 <p align="center">
-  Official ElevenLabs <a href="https://github.com/modelcontextprotocol">Model Context Protocol (MCP)</a> server that enables interaction with powerful Text to Speech and audio processing APIs. This server allows MCP clients like <a href="https://www.anthropic.com/claude">Claude Desktop</a>, <a href="https://www.cursor.so">Cursor</a>, <a href="https://codeium.com/windsurf">Windsurf</a>, <a href="https://github.com/openai/openai-agents-python">OpenAI Agents</a> and others to generate speech, clone voices, transcribe audio, and more.
+  Official ElevenLabs <a href="https://github.com/modelcontextprotocol">Model Context Protocol (MCP)</a> server with <strong>78 comprehensive tools</strong> for Text to Speech, voice cloning, conversational AI, audio processing, and advanced analytics. This enhanced SDK-based server allows MCP clients like <a href="https://www.anthropic.com/claude">Claude Desktop</a>, <a href="https://www.cursor.so">Cursor</a>, <a href="https://codeium.com/windsurf">Windsurf</a>, <a href="https://github.com/openai/openai-agents-python">OpenAI Agents</a> and others to generate speech, clone voices, create AI agents, analyze conversations, and much more.
 </p>
+
+## ✨ What's New in Enhanced v2.0
+
+- **🚀 78 Tools** (up from 25) - Complete ElevenLabs API coverage
+- **🤖 Conversational AI** - Create, manage, and analyze AI agents
+- **📊 Analytics** - Conversation analytics and performance reports
+- **🎯 Voice Design** - Advanced voice cloning and customization
+- **📁 Batch Processing** - Process multiple files efficiently
+- **⏱️ Timestamps** - TTS with character-level timing data
+- **🔊 Audio Processing** - Enhanced sound effects and isolation
+- **📋 Project Management** - Studio projects and workspace tools
 
 <!--
 mcp-name: io.github.elevenlabs/elevenlabs-mcp
@@ -31,7 +42,7 @@ mcp-name: io.github.elevenlabs/elevenlabs-mcp
       "command": "uvx",
       "args": ["elevenlabs-mcp"],
       "env": {
-        "ELEVENLABS_API_KEY": "sk_ece916657aa72d5b07ef1609c068cea8aec243065fa73fae"
+        "ELEVENLABS_API_KEY": "your_api_key_here"
       }
     }
   }
@@ -200,6 +211,40 @@ which uvx
 Once you obtain the absolute path (e.g., `/usr/local/bin/uvx`), update your configuration to use that path (e.g., `"command": "/usr/local/bin/uvx"`). This ensures that the correct executable is referenced.
 
 
+
+## 🛠️ Complete Tool Suite (78 Tools)
+
+This enhanced MCP server provides **78 comprehensive tools** across all ElevenLabs capabilities:
+
+### 🤖 Conversational AI (20+ tools)
+- **Agent Management**: Create, update, delete, duplicate, and analyze agents
+- **Templates**: 9 pre-configured agent types (customer service, sales, support, etc.)
+- **Knowledge Base**: Document integration (PDF, DOCX, TXT, HTML)
+- **Phone Integration**: Twilio and SIP trunk support
+- **Analytics**: Performance metrics, conversation reports, LLM usage tracking
+
+### 🎙️ Text-to-Speech & Voice (12+ tools) 
+- **Voice Synthesis**: High-quality TTS with 29+ language support
+- **Voice Cloning**: Instant and advanced voice cloning with labels
+- **Voice Design**: Generate voices from text descriptions
+- **Audio Processing**: Isolation, enhancement, sound effects
+- **Batch Processing**: Multiple file processing capabilities
+
+### 📊 Analytics & Management (15+ tools)
+- **History Management**: Generation history, file management
+- **Studio Projects**: Project organization and management
+- **Conversation Analytics**: Detailed performance reports
+- **User Management**: Subscription info, workspace secrets
+- **Pronunciation**: Custom dictionaries and rule management
+
+### 🔧 Advanced Features (30+ tools)
+- **Audio Processing**: Speech-to-text, voice conversion, alignment
+- **Dubbing**: Video/audio dubbing projects
+- **Audio Native**: Dynamic audio generation
+- **Webhooks**: Event management and automation
+- **Streaming**: Real-time TTS and conversation simulation
+
+---
 
 ## 🤖 Conversational AI Agent Features
 

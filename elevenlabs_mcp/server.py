@@ -2069,3 +2069,1133 @@ def manage_agent_lifecycle(
     except Exception as e:
         make_error(f"Failed to manage agent lifecycle: {str(e)}")
         return TextContent(type="text", text="")
+
+
+# ============================================================================
+# ADDITIONAL VOICE MANAGEMENT TOOLS
+# ============================================================================
+
+@mcp.tool(description="Edit an existing voice with new name, description, or labels")
+def edit_voice(
+    voice_id: str,
+    name: str | None = None,
+    description: str | None = None,
+    labels: dict | None = None,
+) -> TextContent:
+    """Edit voice details."""
+    try:
+        updated_voice = client.voices.edit(
+            voice_id=voice_id,
+            name=name,
+            description=description,
+            labels=labels,
+        )
+        return TextContent(
+            type="text",
+            text=f"Voice updated successfully: {updated_voice.name} (ID: {updated_voice.voice_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to edit voice: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get settings for a specific voice")
+def get_voice_settings(voice_id: str) -> TextContent:
+    """Get voice settings."""
+    try:
+        settings = client.voices.get_settings(voice_id=voice_id)
+        return TextContent(type="text", text=f"{settings.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get voice settings: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get default voice settings")
+def get_default_voice_settings() -> TextContent:
+    """Get default voice settings."""
+    try:
+        settings = client.voices.get_default_settings()
+        return TextContent(type="text", text=f"{settings.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get default voice settings: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description=f"""Delete a voice from the library. {get_output_mode_description(output_mode)}.""",
+)
+def delete_voice(voice_id: str, output_directory: str | None = None) -> TextContent:
+    """Delete a voice."""
+    try:
+        client.voices.delete(voice_id=voice_id)
+        return TextContent(type="text", text=f"Voice {voice_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete voice: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# HISTORY MANAGEMENT TOOLS
+# ============================================================================
+
+@mcp.tool(description="Get generation history with pagination")
+def get_history(
+    page_size: int = 100,
+    start_after_history_item_id: str | None = None,
+) -> TextContent:
+    """Get generation history."""
+    try:
+        response = client.history.get(
+            page_size=page_size,
+            start_after_history_item_id=start_after_history_item_id,
+        )
+        
+        history_info = []
+        history_info.append(f"History Items: {len(response.history)}")
+        
+        for item in response.history:
+            history_info.append(f"ID: {item.history_item_id}")
+            history_info.append(f"File Name: {item.file_name}")
+            history_info.append(f"Content Type: {item.content_type}")
+            history_info.append(f"Date: {datetime.fromtimestamp(item.date_unix_secs).strftime('%Y-%m-%d %H:%M:%S')}")
+            history_info.append("")
+        
+        return TextContent(type="text", text="\n".join(history_info))
+    except Exception as e:
+        make_error(f"Failed to get history: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get details of a specific history item")
+def get_history_item(history_item_id: str) -> TextContent:
+    """Get history item details."""
+    try:
+        response = client.history.get_item(history_item_id=history_item_id)
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get history item: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description=f"""Get audio from a history item. {get_output_mode_description(output_mode)}.""",
+)
+def get_history_item_audio(
+    history_item_id: str,
+    output_directory: str | None = None,
+) -> Union[TextContent, EmbeddedResource]:
+    """Get history item audio."""
+    try:
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = make_output_file("history", history_item_id, "mp3")
+        
+        audio_data = client.history.get_item_audio(
+            history_item_id=history_item_id,
+        )
+        audio_bytes = b"".join(audio_data)
+        
+        return handle_output_mode(
+            audio_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to get history item audio: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Delete a history item")
+def delete_history_item(history_item_id: str) -> TextContent:
+    """Delete history item."""
+    try:
+        client.history.delete(history_item_id=history_item_id)
+        return TextContent(type="text", text=f"History item {history_item_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete history item: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description=f"""Download multiple history items as a zip file. {get_output_mode_description(output_mode)}.""",
+)
+def download_history_items(
+    history_item_ids: list[str],
+    output_directory: str | None = None,
+) -> Union[TextContent, EmbeddedResource]:
+    """Download history items."""
+    try:
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = "history_download.zip"
+        
+        audio_data = client.history.download(history_item_ids=history_item_ids)
+        audio_bytes = b"".join(audio_data)
+        
+        return handle_output_mode(
+            audio_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to download history items: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# PRONUNCIATION DICTIONARIES TOOLS
+# ============================================================================
+
+@mcp.tool(description="List all pronunciation dictionaries")
+def list_pronunciation_dictionaries() -> TextContent:
+    """List pronunciation dictionaries."""
+    try:
+        response = client.pronunciation_dictionaries.list()
+        
+        dict_info = []
+        dict_info.append(f"Pronunciation Dictionaries: {len(response.pronunciation_dictionaries)}")
+        
+        for dictionary in response.pronunciation_dictionaries:
+            dict_info.append(f"Name: {dictionary.name}")
+            dict_info.append(f"ID: {dictionary.pronunciation_dictionary_id}")
+            dict_info.append(f"Description: {dictionary.description or 'N/A'}")
+            dict_info.append("")
+        
+        return TextContent(type="text", text="\n".join(dict_info))
+    except Exception as e:
+        make_error(f"Failed to list pronunciation dictionaries: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get details of a specific pronunciation dictionary")
+def get_pronunciation_dictionary(dictionary_id: str) -> TextContent:
+    """Get pronunciation dictionary."""
+    try:
+        response = client.pronunciation_dictionaries.get(
+            pronunciation_dictionary_id=dictionary_id
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get pronunciation dictionary: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description="""Create pronunciation dictionary from rules.
+    
+    Args:
+        name: Name of the dictionary
+        description: Optional description
+        rules: List of pronunciation rules in format {"IPA": "word", "text": "pronunciation"}
+    """
+)
+def create_pronunciation_dictionary_from_rules(
+    name: str,
+    description: str | None = None,
+    rules: list[dict] | None = None,
+) -> TextContent:
+    """Create pronunciation dictionary from rules."""
+    try:
+        response = client.pronunciation_dictionaries.add(
+            name=name,
+            description=description,
+            rules=rules or [],
+        )
+        return TextContent(
+            type="text",
+            text=f"Pronunciation dictionary created: {response.name} (ID: {response.pronunciation_dictionary_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create pronunciation dictionary: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description="""Add rules to an existing pronunciation dictionary.
+    
+    Args:
+        dictionary_id: ID of the dictionary
+        rules: List of pronunciation rules in format {"IPA": "word", "text": "pronunciation"}
+    """
+)
+def add_pronunciation_rules(dictionary_id: str, rules: list[dict]) -> TextContent:
+    """Add pronunciation rules."""
+    try:
+        response = client.pronunciation_dictionaries.add_rules(
+            pronunciation_dictionary_id=dictionary_id,
+            rules=rules,
+        )
+        return TextContent(
+            type="text",
+            text=f"Added {len(rules)} rules to dictionary {dictionary_id}"
+        )
+    except Exception as e:
+        make_error(f"Failed to add pronunciation rules: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description="""Remove rules from a pronunciation dictionary.
+    
+    Args:
+        dictionary_id: ID of the dictionary
+        rule_strings: List of rule strings to remove
+    """
+)
+def remove_pronunciation_rules(dictionary_id: str, rule_strings: list[str]) -> TextContent:
+    """Remove pronunciation rules."""
+    try:
+        response = client.pronunciation_dictionaries.remove_rules(
+            pronunciation_dictionary_id=dictionary_id,
+            rule_strings=rule_strings,
+        )
+        return TextContent(
+            type="text",
+            text=f"Removed {len(rule_strings)} rules from dictionary {dictionary_id}"
+        )
+    except Exception as e:
+        make_error(f"Failed to remove pronunciation rules: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# STUDIO PROJECTS TOOLS
+# ============================================================================
+
+@mcp.tool(description="List all Studio projects")
+def list_studio_projects() -> TextContent:
+    """List Studio projects."""
+    try:
+        response = client.studio.list_projects()
+        
+        project_info = []
+        project_info.append(f"Studio Projects: {len(response.projects)}")
+        
+        for project in response.projects:
+            project_info.append(f"Name: {project.name}")
+            project_info.append(f"ID: {project.project_id}")
+            project_info.append(f"Created: {datetime.fromtimestamp(project.created_at_unix_secs).strftime('%Y-%m-%d %H:%M:%S')}")
+            project_info.append("")
+        
+        return TextContent(type="text", text="\n".join(project_info))
+    except Exception as e:
+        make_error(f"Failed to list Studio projects: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Create a new Studio project")
+def create_studio_project(name: str, description: str | None = None) -> TextContent:
+    """Create Studio project."""
+    try:
+        response = client.studio.create_project(
+            name=name,
+            description=description,
+        )
+        return TextContent(
+            type="text",
+            text=f"Studio project created: {response.name} (ID: {response.project_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create Studio project: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get details of a Studio project")
+def get_studio_project(project_id: str) -> TextContent:
+    """Get Studio project."""
+    try:
+        response = client.studio.get_project(project_id=project_id)
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get Studio project: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Delete a Studio project")
+def delete_studio_project(project_id: str) -> TextContent:
+    """Delete Studio project."""
+    try:
+        client.studio.delete_project(project_id=project_id)
+        return TextContent(type="text", text=f"Studio project {project_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete Studio project: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# ADDITIONAL CONVERSATION TOOLS
+# ============================================================================
+
+@mcp.tool(description="Delete a conversation")
+def delete_conversation(conversation_id: str) -> TextContent:
+    """Delete conversation."""
+    try:
+        client.conversational_ai.conversations.delete(conversation_id)
+        return TextContent(type="text", text=f"Conversation {conversation_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete conversation: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description=f"""Get audio from a conversation. {get_output_mode_description(output_mode)}.""",
+)
+def get_conversation_audio(
+    conversation_id: str,
+    output_directory: str | None = None,
+) -> Union[TextContent, EmbeddedResource]:
+    """Get conversation audio."""
+    try:
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = make_output_file("conversation", conversation_id, "mp3")
+        
+        audio_data = client.conversational_ai.conversations.get_audio(
+            conversation_id=conversation_id,
+        )
+        audio_bytes = b"".join(audio_data)
+        
+        return handle_output_mode(
+            audio_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to get conversation audio: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get signed URL for conversation")
+def get_conversation_signed_url(agent_id: str) -> TextContent:
+    """Get conversation signed URL."""
+    try:
+        response = client.conversational_ai.conversations.get_signed_url(
+            agent_id=agent_id,
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get conversation signed URL: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get conversation token")
+def get_conversation_token(agent_id: str) -> TextContent:
+    """Get conversation token."""
+    try:
+        response = client.conversational_ai.conversations.get_token(
+            agent_id=agent_id,
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get conversation token: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Send feedback for a conversation")
+def send_conversation_feedback(conversation_id: str, feedback: bool) -> TextContent:
+    """Send conversation feedback."""
+    try:
+        client.conversational_ai.conversations.send_feedback(
+            conversation_id=conversation_id,
+            feedback=feedback,
+        )
+        return TextContent(type="text", text=f"Feedback {'positive' if feedback else 'negative'} sent for conversation {conversation_id}.")
+    except Exception as e:
+        make_error(f"Failed to send conversation feedback: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# PHONE NUMBER MANAGEMENT TOOLS
+# ============================================================================
+
+@mcp.tool(description="Create/import a phone number")
+def create_phone_number(
+    phone_number: str,
+    provider_type: Literal["twilio", "sip_trunk"],
+    label: str | None = None,
+) -> TextContent:
+    """Create phone number."""
+    try:
+        response = client.conversational_ai.phone_numbers.create(
+            phone_number=phone_number,
+            provider_type=provider_type,
+            label=label,
+        )
+        return TextContent(
+            type="text",
+            text=f"Phone number created: {response.phone_number} (ID: {response.phone_number_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create phone number: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get details of a phone number")
+def get_phone_number(phone_number_id: str) -> TextContent:
+    """Get phone number."""
+    try:
+        response = client.conversational_ai.phone_numbers.get(
+            phone_number_id=phone_number_id
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get phone number: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Update a phone number")
+def update_phone_number(
+    phone_number_id: str,
+    label: str | None = None,
+    provider_type: Literal["twilio", "sip_trunk"] | None = None,
+) -> TextContent:
+    """Update phone number."""
+    try:
+        response = client.conversational_ai.phone_numbers.update(
+            phone_number_id=phone_number_id,
+            label=label,
+            provider_type=provider_type,
+        )
+        return TextContent(
+            type="text",
+            text=f"Phone number updated: {response.phone_number} (ID: {response.phone_number_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to update phone number: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Delete a phone number")
+def delete_phone_number(phone_number_id: str) -> TextContent:
+    """Delete phone number."""
+    try:
+        client.conversational_ai.phone_numbers.delete(phone_number_id)
+        return TextContent(type="text", text=f"Phone number {phone_number_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete phone number: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# KNOWLEDGE BASE MANAGEMENT TOOLS
+# ============================================================================
+
+@mcp.tool(description="List all knowledge base documents")
+def list_knowledge_base_documents() -> TextContent:
+    """List knowledge base documents."""
+    try:
+        response = client.conversational_ai.knowledge_base.list()
+        
+        doc_info = []
+        doc_info.append(f"Knowledge Base Documents: {len(response.documents)}")
+        
+        for doc in response.documents:
+            doc_info.append(f"Name: {doc.name}")
+            doc_info.append(f"ID: {doc.document_id}")
+            doc_info.append(f"Type: {doc.type}")
+            doc_info.append("")
+        
+        return TextContent(type="text", text="\n".join(doc_info))
+    except Exception as e:
+        make_error(f"Failed to list knowledge base documents: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get a knowledge base document")
+def get_knowledge_base_document(document_id: str) -> TextContent:
+    """Get knowledge base document."""
+    try:
+        response = client.conversational_ai.knowledge_base.get_document(
+            document_id=document_id
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get knowledge base document: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Create knowledge base from URL")
+def create_knowledge_base_from_url(url: str, name: str) -> TextContent:
+    """Create knowledge base from URL."""
+    try:
+        response = client.conversational_ai.knowledge_base.create_from_url(
+            name=name,
+            url=url,
+        )
+        return TextContent(
+            type="text",
+            text=f"Knowledge base created from URL: {response.name} (ID: {response.document_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create knowledge base from URL: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Create knowledge base from text")
+def create_knowledge_base_from_text(name: str, text: str) -> TextContent:
+    """Create knowledge base from text."""
+    try:
+        response = client.conversational_ai.knowledge_base.create_from_text(
+            name=name,
+            text=text,
+        )
+        return TextContent(
+            type="text",
+            text=f"Knowledge base created from text: {response.name} (ID: {response.document_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create knowledge base from text: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Delete a knowledge base document")
+def delete_knowledge_base_document(document_id: str) -> TextContent:
+    """Delete knowledge base document."""
+    try:
+        client.conversational_ai.knowledge_base.delete_document(document_id)
+        return TextContent(type="text", text=f"Knowledge base document {document_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete knowledge base document: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# AUDIO NATIVE TOOLS
+# ============================================================================
+
+@mcp.tool(description="Create an Audio Native project")
+def create_audio_native_project(name: str, description: str | None = None) -> TextContent:
+    """Create Audio Native project."""
+    try:
+        response = client.audio_native.create_project(
+            name=name,
+            description=description,
+        )
+        return TextContent(
+            type="text",
+            text=f"Audio Native project created: {response.name} (ID: {response.project_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create Audio Native project: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# WEBHOOK TOOLS
+# ============================================================================
+
+@mcp.tool(description="List all webhooks")
+def list_webhooks() -> TextContent:
+    """List webhooks."""
+    try:
+        response = client.webhooks.list()
+        
+        webhook_info = []
+        webhook_info.append(f"Webhooks: {len(response.webhooks)}")
+        
+        for webhook in response.webhooks:
+            webhook_info.append(f"URL: {webhook.url}")
+            webhook_info.append(f"ID: {webhook.webhook_id}")
+            webhook_info.append(f"Status: {webhook.status}")
+            webhook_info.append("")
+        
+        return TextContent(type="text", text="\n".join(webhook_info))
+    except Exception as e:
+        make_error(f"Failed to list webhooks: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# FORCED ALIGNMENT TOOLS
+# ============================================================================
+
+@mcp.tool(
+    description=f"""Align audio with transcript text. {get_output_mode_description(output_mode)}.""",
+)
+def create_forced_alignment(
+    audio_file_path: str,
+    transcript: str,
+    output_directory: str | None = None,
+) -> Union[TextContent, EmbeddedResource]:
+    """Create forced alignment."""
+    try:
+        file_path = handle_input_file(audio_file_path)
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = make_output_file("alignment", file_path.name, "json")
+        
+        with file_path.open("rb") as f:
+            audio_bytes = f.read()
+        
+        alignment_data = client.alignment.convert(
+            audio=audio_bytes,
+            transcript=transcript,
+        )
+        alignment_bytes = alignment_data.model_dump_json().encode('utf-8')
+        
+        return handle_output_mode(
+            alignment_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to create forced alignment: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# ADDITIONAL AGENT TOOLS
+# ============================================================================
+
+@mcp.tool(description="Get agent link for conversation")
+def get_agent_link(agent_id: str) -> TextContent:
+    """Get agent link."""
+    try:
+        response = client.conversational_ai.agents.get_link(agent_id=agent_id)
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get agent link: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Simulate a conversation with an agent")
+def simulate_conversation(
+    agent_id: str,
+    messages: list[str] | None = None,
+    max_tokens: int | None = 250,
+) -> TextContent:
+    """Simulate conversation."""
+    try:
+        if not messages:
+            messages = ["Hello", "How can you help me?"]
+        
+        response = client.conversational_ai.agents.simulate_conversation(
+            agent_id=agent_id,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to simulate conversation: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Calculate LLM usage for an agent")
+def calculate_llm_usage(agent_id: str, days_back: int = 30) -> TextContent:
+    """Calculate LLM usage."""
+    try:
+        response = client.conversational_ai.agents.calculate_llm_usage(
+            agent_id=agent_id,
+            days_back=days_back,
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to calculate LLM usage: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# USER INFO TOOLS
+# ============================================================================
+
+@mcp.tool(description="Get current user information")
+def get_user_info() -> TextContent:
+    """Get user info."""
+    try:
+        response = client.user.get()
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get user info: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# ENHANCED TTS TOOLS WITH TIMESTAMPS
+# ============================================================================
+
+@mcp.tool(
+    description=f"""Convert text to speech with character-level timestamps. {get_output_mode_description(output_mode)}.""",
+)
+def text_to_speech_with_timestamps(
+    text: str,
+    voice_id: str | None = None,
+    model_id: str = "eleven_turbo_v2",
+    output_directory: str | None = None,
+    language: str = "en",
+    stability: float = 0.5,
+    similarity_boost: float = 0.75,
+    style: float = 0,
+    use_speaker_boost: bool = True,
+    speed: float = 1.0,
+    output_format: str = "mp3_44100_128",
+) -> Union[TextContent, EmbeddedResource]:
+    """Convert text to speech with timestamps."""
+    try:
+        if text == "":
+            make_error("Text is required.")
+        
+        voice = None
+        if voice_id is None:
+            voice_id = DEFAULT_VOICE_ID
+        else:
+            voice = client.voices.get(voice_id=voice_id)
+        
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = make_output_file("tts_ts", text, "json")
+        
+        tts_data = client.text_to_speech_with_timestamps.convert(
+            text=text,
+            voice_id=voice_id,
+            model_id=model_id,
+            output_format=output_format,
+            voice_settings={
+                "stability": stability,
+                "similarity_boost": similarity_boost,
+                "style": style,
+                "use_speaker_boost": use_speaker_boost,
+                "speed": speed,
+            },
+        )
+        
+        # Extract timestamps data
+        if hasattr(tts_data, 'timestamps'):
+            timestamps_data = tts_data.timestamps
+        else:
+            timestamps_data = tts_data
+        
+        timestamps_bytes = str(timestamps_data).encode('utf-8')
+        
+        return handle_output_mode(
+            timestamps_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to generate TTS with timestamps: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# STREAMLINED VOICE MANAGEMENT
+# ============================================================================
+
+@mcp.tool(
+    description=f"""Stream text to speech for real-time playback. {get_output_mode_description(output_mode)}.""",
+)
+def text_to_speech_stream(
+    text: str,
+    voice_id: str | None = None,
+    model_id: str = "eleven_turbo_v2",
+    output_directory: str | None = None,
+    language: str = "en",
+    stability: float = 0.5,
+    similarity_boost: float = 0.75,
+) -> Union[TextContent, EmbeddedResource]:
+    """Stream text to speech."""
+    try:
+        if text == "":
+            make_error("Text is required.")
+        
+        voice = None
+        if voice_id is None:
+            voice_id = DEFAULT_VOICE_ID
+        else:
+            voice = client.voices.get(voice_id=voice_id)
+        
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = make_output_file("tts_stream", text, "mp3")
+        
+        audio_data = client.text_to_speech.stream(
+            text=text,
+            voice_id=voice_id,
+            model_id=model_id,
+            voice_settings={
+                "stability": stability,
+                "similarity_boost": similarity_boost,
+            },
+        )
+        audio_bytes = b"".join(audio_data)
+        
+        return handle_output_mode(
+            audio_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to stream TTS: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# ADVANCED VOICE CLONING TOOLS
+# ============================================================================
+
+@mcp.tool(
+    description="""Clone voice from multiple audio files with advanced settings.
+    
+    ⚠️ COST WARNING: This tool makes an API call to ElevenLabs which may incur costs.
+    
+    Args:
+        name: Name of the cloned voice
+        files: List of audio file paths
+        description: Optional description
+        labels: Optional labels dictionary
+        category: Voice category (e.g., 'voicebook', 'generated')
+    """
+)
+def advanced_voice_clone(
+    name: str,
+    files: list[str],
+    description: str | None = None,
+    labels: dict | None = None,
+    category: str | None = None,
+) -> TextContent:
+    """Advanced voice cloning with additional options."""
+    try:
+        input_files = [str(handle_input_file(file).absolute()) for file in files]
+        voice = client.voices.add(
+            name=name,
+            description=description,
+            files=input_files,
+            labels=labels,
+            category=category,
+        )
+        
+        return TextContent(
+            type="text",
+            text=f"""Voice cloned successfully: Name: {voice.name}
+ID: {voice.voice_id}
+Category: {voice.category}
+Description: {voice.description or "N/A"}""",
+        )
+    except Exception as e:
+        make_error(f"Failed to clone voice: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# ENHANCED AUDIO PROCESSING TOOLS
+# ============================================================================
+
+@mcp.tool(
+    description=f"""Enhanced audio isolation with quality settings. {get_output_mode_description(output_mode)}.
+    
+    ⚠️ COST WARNING: This tool makes an API call to ElevenLabs which may incur costs.
+    """
+)
+def enhanced_audio_isolation(
+    input_file_path: str,
+    output_directory: str | None = None,
+    isolation_level: str = "balanced",
+) -> Union[TextContent, EmbeddedResource]:
+    """Enhanced audio isolation."""
+    try:
+        file_path = handle_input_file(input_file_path)
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = make_output_file("enhanced_iso", file_path.name, "mp3")
+        
+        with file_path.open("rb") as f:
+            audio_bytes = f.read()
+        
+        audio_data = client.audio_isolation.convert(
+            audio=audio_bytes,
+            isolation_level=isolation_level,
+        )
+        audio_bytes = b"".join(audio_data)
+        
+        return handle_output_mode(
+            audio_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to isolate audio: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(
+    description=f"""Enhanced sound effects with duration and style options. {get_output_mode_description(output_mode)}.
+    
+    ⚠️ COST WARNING: This tool makes an API call to ElevenLabs which may incur costs.
+    """
+)
+def enhanced_sound_effects(
+    text: str,
+    duration_seconds: float = 2.0,
+    output_directory: str | None = None,
+    output_format: str = "mp3_44100_128",
+    style: str = "realistic",
+    intensity: float = 0.7,
+) -> Union[TextContent, EmbeddedResource]:
+    """Enhanced sound effects generation."""
+    try:
+        if duration_seconds < 0.5 or duration_seconds > 5:
+            make_error("Duration must be between 0.5 and 5 seconds")
+        
+        output_path = make_output_path(output_directory, base_path)
+        output_file_name = make_output_file("enhanced_sfx", text, "mp3")
+        
+        audio_data = client.text_to_sound_effects.convert(
+            text=text,
+            output_format=output_format,
+            duration_seconds=duration_seconds,
+            style=style,
+            intensity=intensity,
+        )
+        audio_bytes = b"".join(audio_data)
+        
+        return handle_output_mode(
+            audio_bytes, output_path, output_file_name, output_mode
+        )
+    except Exception as e:
+        make_error(f"Failed to generate enhanced sound effects: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# BATCH PROCESSING TOOLS
+# ============================================================================
+
+@mcp.tool(
+    description=f"""Process multiple text files with batch text-to-speech. {get_output_mode_description(output_mode)}.
+    
+    ⚠️ COST WARNING: This tool makes multiple API calls to ElevenLabs which may incur costs.
+    
+    Args:
+        input_directory: Directory containing text files
+        voice_id: Voice ID to use (uses default if not specified)
+        output_directory: Where to save the audio files
+    """
+)
+def batch_text_to_speech(
+    input_directory: str,
+    voice_id: str | None = None,
+    output_directory: str | None = None,
+    model_id: str = "eleven_turbo_v2",
+) -> TextContent:
+    """Batch process text files to speech."""
+    try:
+        if voice_id is None:
+            voice_id = DEFAULT_VOICE_ID
+        
+        input_path = Path(input_directory)
+        if not input_path.exists() or not input_path.is_dir():
+            make_error(f"Input directory {input_directory} does not exist or is not a directory")
+        
+        output_path = make_output_path(output_directory, base_path)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        text_files = list(input_path.glob("*.txt")) + list(input_path.glob("*.md"))
+        if not text_files:
+            make_error("No .txt or .md files found in the input directory")
+        
+        results = []
+        for text_file in text_files:
+            try:
+                with open(text_file, 'r', encoding='utf-8') as f:
+                    text_content = f.read().strip()
+                
+                if text_content:
+                    # Generate audio for this text
+                    audio_data = client.text_to_speech.convert(
+                        text=text_content,
+                        voice_id=voice_id,
+                        model_id=model_id,
+                        voice_settings={
+                            "stability": 0.5,
+                            "similarity_boost": 0.75,
+                        },
+                    )
+                    audio_bytes = b"".join(audio_data)
+                    
+                    # Save to output directory
+                    output_file = output_path / f"{text_file.stem}.mp3"
+                    with open(output_file, 'wb') as f:
+                        f.write(audio_bytes)
+                    
+                    results.append(f"✓ {text_file.name} -> {output_file.name}")
+                else:
+                    results.append(f"⚠ {text_file.name} (empty file)")
+            
+            except Exception as e:
+                results.append(f"✗ {text_file.name} (error: {str(e)})")
+        
+        return TextContent(
+            type="text",
+            text=f"Batch TTS completed for {len(text_files)} files:\n" + "\n".join(results)
+        )
+    except Exception as e:
+        make_error(f"Failed to process batch TTS: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# QUALITY ANALYSIS TOOLS
+# ============================================================================
+
+@mcp.tool(description="Analyze voice quality and characteristics")
+def analyze_voice_quality(voice_id: str) -> TextContent:
+    """Analyze voice quality."""
+    try:
+        # Get voice details
+        voice = client.voices.get(voice_id=voice_id)
+        
+        # Get voice settings if available
+        try:
+            settings = client.voices.get_settings(voice_id=voice_id)
+            settings_info = f"\nVoice Settings:\n{settings.model_dump_json(indent=2)}"
+        except:
+            settings_info = "\nVoice Settings: Not available"
+        
+        analysis = f"""Voice Quality Analysis for {voice.name} (ID: {voice_id})
+
+Basic Information:
+- Name: {voice.name}
+- Category: {voice.category}
+- Description: {voice.description or 'N/A'}
+{settings_info}
+
+Quality Indicators:
+- Fine-tuning Status: {getattr(voice, 'fine_tuning_status', 'Not applicable')}
+- Available: {'Yes' if voice else 'No'}
+"""
+        return TextContent(type="text", text=analysis)
+    except Exception as e:
+        make_error(f"Failed to analyze voice quality: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# WORKSPACE MANAGEMENT TOOLS
+# ============================================================================
+
+@mcp.tool(description="List all workspace secrets")
+def list_workspace_secrets() -> TextContent:
+    """List workspace secrets."""
+    try:
+        response = client.conversational_ai.secrets.list()
+        
+        secret_info = []
+        secret_info.append(f"Workspace Secrets: {len(response.secrets)}")
+        
+        for secret in response.secrets:
+            secret_info.append(f"Name: {secret.name}")
+            secret_info.append(f"ID: {secret.secret_id}")
+            secret_info.append(f"Created: {datetime.fromtimestamp(secret.created_at_unix_secs).strftime('%Y-%m-%d %H:%M:%S')}")
+            secret_info.append("")
+        
+        return TextContent(type="text", text="\n".join(secret_info))
+    except Exception as e:
+        make_error(f"Failed to list workspace secrets: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Create a workspace secret")
+def create_workspace_secret(name: str, value: str) -> TextContent:
+    """Create workspace secret."""
+    try:
+        response = client.conversational_ai.secrets.create(
+            name=name,
+            value=value,
+        )
+        return TextContent(
+            type="text",
+            text=f"Workspace secret created: {response.name} (ID: {response.secret_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create workspace secret: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Delete a workspace secret")
+def delete_workspace_secret(secret_id: str) -> TextContent:
+    """Delete workspace secret."""
+    try:
+        client.conversational_ai.secrets.delete(secret_id)
+        return TextContent(type="text", text=f"Workspace secret {secret_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete workspace secret: {str(e)}")
+        return TextContent(type="text", text="")
