@@ -694,8 +694,10 @@ def add_knowledge_base_to_agent(
     agent = client.conversational_ai.agents.get(agent_id=agent_id)
 
     agent_config = agent.conversation_config.agent
+    # agent_config is an object, not a dict, so convert it to dict
+    agent_config_dict = agent_config.model_dump() if agent_config else {}
     knowledge_base_list = (
-        agent_config.get("prompt", {}).get("knowledge_base", []) if agent_config else []
+        agent_config_dict.get("prompt", {}).get("knowledge_base", []) if agent_config_dict else []
     )
     knowledge_base_list.append(
         KnowledgeBaseLocator(
@@ -705,10 +707,10 @@ def add_knowledge_base_to_agent(
         )
     )
 
-    if agent_config and "prompt" not in agent_config:
-        agent_config["prompt"] = {}
-    if agent_config:
-        agent_config["prompt"]["knowledge_base"] = knowledge_base_list
+    if agent_config_dict and "prompt" not in agent_config_dict:
+        agent_config_dict["prompt"] = {}
+    if agent_config_dict:
+        agent_config_dict["prompt"]["knowledge_base"] = knowledge_base_list
 
     client.conversational_ai.agents.update(
         agent_id=agent_id, conversation_config=agent.conversation_config
@@ -2714,9 +2716,15 @@ def create_knowledge_base_from_url(url: str, name: str) -> TextContent:
 def create_knowledge_base_from_text(name: str, text: str) -> TextContent:
     """Create knowledge base from text."""
     try:
-        response = client.conversational_ai.knowledge_base.create_from_text(
+        # Convert text to file-like object
+        text_bytes = text.encode("utf-8")
+        text_io = BytesIO(text_bytes)
+        text_io.name = "text.txt"
+        text_io.content_type = "text/plain"
+
+        response = client.conversational_ai.knowledge_base.documents.create_from_file(
             name=name,
-            text=text,
+            file=text_io,
         )
         return TextContent(
             type="text",
@@ -3063,18 +3071,24 @@ def get_agent_link(agent_id: str) -> TextContent:
 @mcp.tool(description="Simulate a conversation with an agent")
 def simulate_conversation(
     agent_id: str,
-    messages: list[str] | None = None,
-    max_tokens: int | None = 250,
+    simulation_specification: dict,
+    extra_evaluation_criteria: list[dict] | None = None,
+    new_turns_limit: int | None = None,
 ) -> TextContent:
-    """Simulate conversation."""
-    try:
-        if not messages:
-            messages = ["Hello", "How can you help me?"]
+    """Simulate conversation.
 
+    Args:
+        agent_id: The agent ID
+        simulation_specification: Simulation specification config including simulated_user_config
+        extra_evaluation_criteria: Optional additional evaluation criteria
+        new_turns_limit: Optional limit on number of conversation turns
+    """
+    try:
         response = client.conversational_ai.agents.simulate_conversation(
             agent_id=agent_id,
-            messages=messages,
-            max_tokens=max_tokens,
+            simulation_specification=simulation_specification,
+            extra_evaluation_criteria=extra_evaluation_criteria,
+            new_turns_limit=new_turns_limit,
         )
         return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
     except Exception as e:
