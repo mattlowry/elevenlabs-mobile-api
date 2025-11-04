@@ -2672,7 +2672,7 @@ def list_knowledge_base_documents() -> TextContent:
         
         for doc in response.documents:
             doc_info.append(f"Name: {doc.name}")
-            doc_info.append(f"ID: {doc.document_id}")
+            doc_info.append(f"ID: {doc.id}")
             doc_info.append(f"Type: {doc.type}")
             doc_info.append("")
         
@@ -2705,7 +2705,7 @@ def create_knowledge_base_from_url(url: str, name: str) -> TextContent:
         )
         return TextContent(
             type="text",
-            text=f"Knowledge base created from URL: {response.name} (ID: {response.document_id})"
+            text=f"Knowledge base created from URL: {response.name} (ID: {response.id})"
         )
     except Exception as e:
         make_error(f"Failed to create knowledge base from URL: {str(e)}")
@@ -2728,7 +2728,7 @@ def create_knowledge_base_from_text(name: str, text: str) -> TextContent:
         )
         return TextContent(
             type="text",
-            text=f"Knowledge base created from text: {response.name} (ID: {response.document_id})"
+            text=f"Knowledge base created from text: {response.name} (ID: {response.id})"
         )
     except Exception as e:
         make_error(f"Failed to create knowledge base from text: {str(e)}")
@@ -2781,7 +2781,7 @@ def create_knowledge_base_document_from_file(
 
         return TextContent(
             type="text",
-            text=f"Knowledge base created from file: {response.name} (ID: {response.document_id})"
+            text=f"Knowledge base created from file: {response.name} (ID: {response.id})"
         )
     except Exception as e:
         make_error(f"Failed to create knowledge base from file: {str(e)}")
