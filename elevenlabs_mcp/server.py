@@ -3079,7 +3079,8 @@ def simulate_conversation(
 
     Args:
         agent_id: The agent ID
-        simulation_specification: Simulation specification config including simulated_user_config
+        simulation_specification: Must include simulated_user_config. Minimal example:
+            {"simulated_user_config": {"prompt": {"prompt": "You are a customer asking about services"}}}
         extra_evaluation_criteria: Optional additional evaluation criteria
         new_turns_limit: Optional limit on number of conversation turns
     """
@@ -3107,7 +3108,8 @@ def stream_simulate_conversation(
 
     Args:
         agent_id: The agent ID
-        simulation_specification: Simulation specification config including simulated_user_config
+        simulation_specification: Must include simulated_user_config. Minimal example:
+            {"simulated_user_config": {"prompt": {"prompt": "You are a customer asking about services"}}}
         extra_evaluation_criteria: Optional additional evaluation criteria
         new_turns_limit: Optional limit on number of conversation turns
     """
