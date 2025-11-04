@@ -2569,6 +2569,93 @@ def delete_phone_number(phone_number_id: str) -> TextContent:
 
 
 # ============================================================================
+# TOOLS MANAGEMENT
+# ============================================================================
+
+@mcp.tool(description="List all tools available in the workspace")
+def list_tools() -> TextContent:
+    """List all tools in workspace."""
+    try:
+        response = client.conversational_ai.tools.list()
+
+        tools_info = []
+        tools_info.append(f"Tools: {len(response.tools)}")
+        tools_info.append("")
+
+        for tool in response.tools:
+            tools_info.append(f"Name: {tool.name}")
+            tools_info.append(f"ID: {tool.tool_id}")
+            tools_info.append(f"Type: {tool.type}")
+            tools_info.append(f"Description: {tool.description}")
+            tools_info.append("")
+
+        return TextContent(type="text", text="\n".join(tools_info))
+    except Exception as e:
+        make_error(f"Failed to list tools: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get details of a specific tool")
+def get_tool(tool_id: str) -> TextContent:
+    """Get tool details."""
+    try:
+        response = client.conversational_ai.tools.get(tool_id=tool_id)
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get tool: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Update a tool configuration")
+def update_tool(tool_id: str, tool_config: dict) -> TextContent:
+    """Update tool configuration."""
+    try:
+        response = client.conversational_ai.tools.update(
+            tool_id=tool_id,
+            tool_config=tool_config,
+        )
+        return TextContent(type="text", text=f"Tool {tool_id} updated successfully.\n{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to update tool: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Delete a tool from the workspace")
+def delete_tool(tool_id: str) -> TextContent:
+    """Delete tool."""
+    try:
+        client.conversational_ai.tools.delete(tool_id=tool_id)
+        return TextContent(type="text", text=f"Tool {tool_id} deleted successfully.")
+    except Exception as e:
+        make_error(f"Failed to delete tool: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get agents that depend on a specific tool")
+def get_tool_dependent_agents(tool_id: str) -> TextContent:
+    """Get agents that depend on this tool."""
+    try:
+        response = client.conversational_ai.tools.get_dependent_agents(tool_id=tool_id)
+
+        if not response.agents:
+            return TextContent(type="text", text=f"No agents depend on tool {tool_id}")
+
+        agents_info = []
+        agents_info.append(f"Agents depending on tool {tool_id}:")
+        agents_info.append("")
+
+        for agent in response.agents:
+            agents_info.append(f"Agent ID: {agent.agent_id}")
+            agents_info.append(f"Agent Name: {agent.name}")
+            agents_info.append("")
+
+        return TextContent(type="text", text="\n".join(agents_info))
+    except Exception as e:
+        make_error(f"Failed to get dependent agents: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
 # KNOWLEDGE BASE MANAGEMENT TOOLS
 # ============================================================================
 
@@ -2648,6 +2735,210 @@ def delete_knowledge_base_document(document_id: str) -> TextContent:
         return TextContent(type="text", text=f"Knowledge base document {document_id} deleted successfully.")
     except Exception as e:
         make_error(f"Failed to delete knowledge base document: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Update a knowledge base document name")
+def update_knowledge_base_document(document_id: str, name: str) -> TextContent:
+    """Update knowledge base document name."""
+    try:
+        response = client.conversational_ai.knowledge_base.documents.update(
+            documentation_id=document_id,
+            name=name,
+        )
+        return TextContent(
+            type="text",
+            text=f"Knowledge base document {document_id} updated successfully.\n{response.model_dump_json(indent=2)}"
+        )
+    except Exception as e:
+        make_error(f"Failed to update knowledge base document: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Create knowledge base document from file")
+def create_knowledge_base_document_from_file(
+    file_path: str,
+    name: str | None = None,
+) -> TextContent:
+    """Create knowledge base document from file."""
+    try:
+        # Validate file exists
+        input_file_path = handle_input_file(file_path)
+
+        with open(input_file_path, "rb") as f:
+            response = client.conversational_ai.knowledge_base.documents.create_from_file(
+                file=f,
+                name=name,
+            )
+
+        return TextContent(
+            type="text",
+            text=f"Knowledge base created from file: {response.name} (ID: {response.document_id})"
+        )
+    except Exception as e:
+        make_error(f"Failed to create knowledge base from file: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get content of a knowledge base document")
+def get_document_content(document_id: str) -> TextContent:
+    """Get document content."""
+    try:
+        response = client.conversational_ai.knowledge_base.documents.get_content(
+            documentation_id=document_id
+        )
+
+        # The response should contain the document content
+        return TextContent(
+            type="text",
+            text=f"Document {document_id} content:\n\n{response}"
+        )
+    except Exception as e:
+        make_error(f"Failed to get document content: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get a specific chunk from a knowledge base document")
+def get_document_chunk(document_id: str, chunk_id: str) -> TextContent:
+    """Get document chunk."""
+    try:
+        response = client.conversational_ai.knowledge_base.documents.chunk.get(
+            documentation_id=document_id,
+            chunk_id=chunk_id,
+        )
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get document chunk: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get total size of knowledge base documents")
+def get_knowledge_base_size() -> TextContent:
+    """Get knowledge base size."""
+    try:
+        response = client.conversational_ai.knowledge_base.get_size()
+
+        # Format the size in a human-readable format
+        size_bytes = response.size_bytes if hasattr(response, 'size_bytes') else 0
+        size_mb = size_bytes / (1024 * 1024)
+
+        return TextContent(
+            type="text",
+            text=f"Knowledge base size: {size_bytes:,} bytes ({size_mb:.2f} MB)"
+        )
+    except Exception as e:
+        make_error(f"Failed to get knowledge base size: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get agents that depend on a knowledge base document")
+def get_document_dependent_agents(document_id: str) -> TextContent:
+    """Get agents that depend on this document."""
+    try:
+        response = client.conversational_ai.knowledge_base.documents.get_agents(
+            documentation_id=document_id
+        )
+
+        if not response.agents:
+            return TextContent(type="text", text=f"No agents depend on document {document_id}")
+
+        agents_info = []
+        agents_info.append(f"Agents depending on document {document_id}:")
+        agents_info.append("")
+
+        for agent in response.agents:
+            agents_info.append(f"Agent ID: {agent.agent_id}")
+            agents_info.append(f"Agent Name: {agent.name}")
+            agents_info.append("")
+
+        return TextContent(type="text", text="\n".join(agents_info))
+    except Exception as e:
+        make_error(f"Failed to get dependent agents: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+# ============================================================================
+# RAG INDEX MANAGEMENT TOOLS
+# ============================================================================
+
+@mcp.tool(description="Compute RAG index for a knowledge base document")
+def compute_rag_index(
+    document_id: str,
+    model: str = "e5_mistral_7b_instruct",
+) -> TextContent:
+    """Compute RAG index for document.
+
+    Args:
+        document_id: The document ID
+        model: Embedding model (e5_mistral_7b_instruct or multilingual_e5_large_instruct)
+    """
+    try:
+        response = client.conversational_ai.knowledge_base.document.compute_rag_index(
+            documentation_id=document_id,
+            model=model,
+        )
+        return TextContent(
+            type="text",
+            text=f"RAG index computation started for document {document_id}.\n{response.model_dump_json(indent=2)}"
+        )
+    except Exception as e:
+        make_error(f"Failed to compute RAG index: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get RAG indexes for a knowledge base document")
+def get_rag_index(document_id: str) -> TextContent:
+    """Get RAG indexes for document."""
+    try:
+        response = client.conversational_ai.get_document_rag_indexes(
+            documentation_id=document_id
+        )
+
+        if not response.indexes:
+            return TextContent(type="text", text=f"No RAG indexes found for document {document_id}")
+
+        index_info = []
+        index_info.append(f"RAG Indexes for document {document_id}:")
+        index_info.append("")
+
+        for idx in response.indexes:
+            index_info.append(f"Index ID: {idx.id}")
+            index_info.append(f"Model: {idx.model}")
+            index_info.append(f"Status: {idx.status}")
+            index_info.append(f"Progress: {idx.progress_percentage}%")
+            index_info.append("")
+
+        return TextContent(type="text", text="\n".join(index_info))
+    except Exception as e:
+        make_error(f"Failed to get RAG indexes: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Get overview of all RAG indexes in the workspace")
+def get_rag_index_overview() -> TextContent:
+    """Get RAG index overview."""
+    try:
+        response = client.conversational_ai.rag_index_overview()
+        return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
+    except Exception as e:
+        make_error(f"Failed to get RAG index overview: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Delete a RAG index for a knowledge base document")
+def delete_rag_index(document_id: str, rag_index_id: str) -> TextContent:
+    """Delete RAG index."""
+    try:
+        client.conversational_ai.delete_document_rag_index(
+            documentation_id=document_id,
+            rag_index_id=rag_index_id,
+        )
+        return TextContent(
+            type="text",
+            text=f"RAG index {rag_index_id} deleted successfully from document {document_id}."
+        )
+    except Exception as e:
+        make_error(f"Failed to delete RAG index: {str(e)}")
         return TextContent(type="text", text="")
 
 
@@ -2736,11 +3027,33 @@ def create_forced_alignment(
 # ADDITIONAL AGENT TOOLS
 # ============================================================================
 
+@mcp.tool(description="Duplicate an existing agent to create a new one")
+def duplicate_agent(agent_id: str, name: str | None = None) -> TextContent:
+    """Duplicate agent.
+
+    Args:
+        agent_id: The ID of the agent to duplicate
+        name: Optional new name for the duplicated agent
+    """
+    try:
+        response = client.conversational_ai.agents.duplicate(
+            agent_id=agent_id,
+            name=name,
+        )
+        return TextContent(
+            type="text",
+            text=f"Agent duplicated successfully. New agent ID: {response.agent_id}"
+        )
+    except Exception as e:
+        make_error(f"Failed to duplicate agent: {str(e)}")
+        return TextContent(type="text", text="")
+
+
 @mcp.tool(description="Get agent link for conversation")
 def get_agent_link(agent_id: str) -> TextContent:
     """Get agent link."""
     try:
-        response = client.conversational_ai.agents.get_link(agent_id=agent_id)
+        response = client.conversational_ai.agents.link.get(agent_id=agent_id)
         return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
     except Exception as e:
         make_error(f"Failed to get agent link: {str(e)}")
@@ -2757,7 +3070,7 @@ def simulate_conversation(
     try:
         if not messages:
             messages = ["Hello", "How can you help me?"]
-        
+
         response = client.conversational_ai.agents.simulate_conversation(
             agent_id=agent_id,
             messages=messages,
@@ -2766,6 +3079,44 @@ def simulate_conversation(
         return TextContent(type="text", text=f"{response.model_dump_json(indent=2)}")
     except Exception as e:
         make_error(f"Failed to simulate conversation: {str(e)}")
+        return TextContent(type="text", text="")
+
+
+@mcp.tool(description="Simulate a conversation with streaming response")
+def stream_simulate_conversation(
+    agent_id: str,
+    simulation_specification: dict,
+    extra_evaluation_criteria: list[dict] | None = None,
+    new_turns_limit: int | None = None,
+) -> TextContent:
+    """Simulate conversation with streaming.
+
+    Args:
+        agent_id: The agent ID
+        simulation_specification: Simulation specification config including simulated_user_config
+        extra_evaluation_criteria: Optional additional evaluation criteria
+        new_turns_limit: Optional limit on number of conversation turns
+    """
+    try:
+        response = client.conversational_ai.agents.simulate_conversation_stream(
+            agent_id=agent_id,
+            simulation_specification=simulation_specification,
+            extra_evaluation_criteria=extra_evaluation_criteria,
+            new_turns_limit=new_turns_limit,
+        )
+
+        # Collect the streamed response
+        result_parts = []
+        for chunk in response:
+            if chunk:
+                result_parts.append(str(chunk))
+
+        return TextContent(
+            type="text",
+            text="Conversation simulation completed:\n\n" + "\n".join(result_parts)
+        )
+    except Exception as e:
+        make_error(f"Failed to stream simulate conversation: {str(e)}")
         return TextContent(type="text", text="")
 
 
