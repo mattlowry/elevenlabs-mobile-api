@@ -693,27 +693,43 @@ def add_knowledge_base_to_agent(
 
     agent = client.conversational_ai.agents.get(agent_id=agent_id)
 
-    agent_config = agent.conversation_config.agent
-    # agent_config is an object, not a dict, so convert it to dict
-    agent_config_dict = agent_config.model_dump() if agent_config else {}
-    knowledge_base_list = (
-        agent_config_dict.get("prompt", {}).get("knowledge_base", []) if agent_config_dict else []
-    )
+    # Get the complete conversation config and convert to dict
+    # Use JSON serialization to avoid Pydantic model_dump issues
+    import json
+    if agent.conversation_config:
+        conversation_config_json = agent.conversation_config.model_dump_json()
+        conversation_config_dict = json.loads(conversation_config_json)
+    else:
+        conversation_config_dict = {}
+
+    # Ensure agent section exists
+    if "agent" not in conversation_config_dict:
+        conversation_config_dict["agent"] = {}
+
+    # Ensure prompt section exists
+    if "prompt" not in conversation_config_dict["agent"]:
+        conversation_config_dict["agent"]["prompt"] = {}
+
+    # Get existing knowledge base list
+    knowledge_base_list = conversation_config_dict["agent"]["prompt"].get("knowledge_base", [])
+
+    # Add new knowledge base document
     knowledge_base_list.append(
-        KnowledgeBaseLocator(
-            type="file" if file else "url",
-            name=knowledge_base_name,
-            id=response.id,
-        )
+        {
+            "type": "file" if input_file_path or text else "url",
+            "name": knowledge_base_name,
+            "id": response.id,
+            "usage_mode": "auto"
+        }
     )
 
-    if agent_config_dict and "prompt" not in agent_config_dict:
-        agent_config_dict["prompt"] = {}
-    if agent_config_dict:
-        agent_config_dict["prompt"]["knowledge_base"] = knowledge_base_list
+    # Update the knowledge base in the config
+    conversation_config_dict["agent"]["prompt"]["knowledge_base"] = knowledge_base_list
 
+    # Update the agent with the modified conversation config
     client.conversational_ai.agents.update(
-        agent_id=agent_id, conversation_config=agent.conversation_config
+        agent_id=agent_id,
+        conversation_config=conversation_config_dict
     )
     return TextContent(
         type="text",
