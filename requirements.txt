@@ -1,0 +1,28 @@
+# ElevenLabs MCP Server Requirements
+# Production-ready dependencies for SSE deployment
+
+# Core MCP and ElevenLabs
+elevenlabs>=2.20.0
+mcp>=1.6.0
+fastmcp>=0.4.1
+
+# Web framework and server
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+starlette>=0.41.0
+
+# Utilities
+python-dotenv>=1.0.0
+httpx>=0.27.0
+pydantic>=2.10.0
+
+# Audio processing dependencies (for ElevenLabs functionality)
+sounddevice>=0.5.1
+soundfile>=0.13.1
+
+# Additional utilities
+fuzzywuzzy>=0.18.0
+python-Levenshtein>=0.25.0
+
+# Audio processing (optional for local use)
+# pyaudio>=0.2.14  # Uncomment for local audio playback

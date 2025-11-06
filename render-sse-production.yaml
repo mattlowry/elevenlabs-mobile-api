@@ -1,0 +1,54 @@
+# Render Blueprint for ElevenLabs MCP SSE Server
+# Production-ready configuration for deploying SSE server to Render.com
+
+services:
+  - type: web
+    name: elevenlabs-mcp-sse
+    env: docker
+    dockerfilePath: ./Dockerfile.sse
+    region: oregon # Change to your preferred region
+    plan: starter # Upgrade to paid plan for production workloads
+    healthCheckPath: /health
+
+    envVars:
+      # Required: ElevenLabs API Key
+      # IMPORTANT: Set this in Render dashboard, never commit keys!
+      - key: ELEVENLABS_API_KEY
+        sync: false # Managed in Render dashboard
+
+      # Server configuration
+      - key: HOST
+        value: "0.0.0.0"
+
+      - key: PORT
+        value: "8000"
+
+      # Output configuration (use 'resources' for serverless/cloud)
+      - key: ELEVENLABS_MCP_OUTPUT_MODE
+        value: "resources"
+
+      - key: ELEVENLABS_MCP_BASE_PATH
+        value: "/tmp"
+
+      # Data residency (enterprise feature)
+      - key: ELEVENLABS_API_RESIDENCY
+        value: "us"
+
+      # Security - Allowed origins for CORS
+      - key: ALLOWED_ORIGINS
+        value: "http://localhost,https://your-frontend-domain.com"
+
+    # Auto-deploy on push to main branch
+    autoDeploy: true
+
+    # Scaling configuration
+    numInstances: 1
+
+    # Build configuration
+    buildFilter:
+      paths:
+        - elevenlabs_mcp/**
+        - requirements.txt
+        - Dockerfile.sse
+        - sse_server.py
+        - render-sse-production.yaml
